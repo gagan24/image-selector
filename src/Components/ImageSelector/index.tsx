@@ -7,31 +7,30 @@ interface Point {
 
 const RoofCanvas: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const offScreenCanvasRef = useRef<HTMLCanvasElement>(null);
     const [points, setPoints] = useState<Point[]>([]);
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
+    const [image, setImage] = useState<HTMLImageElement | null>(null);
 
     useEffect(() => {
-        const offScreenCanvas = offScreenCanvasRef.current;
-        const offScreenContext = offScreenCanvas!.getContext('2d')!;
-        offScreenContext.clearRect(0, 0, offScreenCanvas!.width, offScreenCanvas!.height);
-
-        const image = new Image();
-        image.crossOrigin = 'anonymous'; 
-        image.src = '/sample.webp'; 
-        image.onload = () => {
-            offScreenContext.drawImage(image, 0, 0, offScreenCanvas!.width, offScreenCanvas!.height);
-            drawOnMainCanvas();
+        const canvas = canvasRef.current;
+        const context = canvas!.getContext('2d')!;
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous'; // This is crucial to avoid tainting the canvas
+        img.src = '/sample.webp'; // Replace with your image URL
+        img.onload = () => {
+            context.drawImage(img, 0, 0, canvas!.width, canvas!.height);
+            setImage(img);
         };
     }, []);
 
-    const drawOnMainCanvas = () => {
+    const draw = () => {
         const canvas = canvasRef.current;
         const context = canvas!.getContext('2d')!;
-        const offScreenCanvas = offScreenCanvasRef.current;
-
-        context.clearRect(0, 0, canvas!.width, canvas!.height);
-        context.drawImage(offScreenCanvas!, 0, 0, canvas!.width, canvas!.height);
+        
+        if (image) {
+            context.drawImage(image, 0, 0, canvas!.width, canvas!.height);
+        }
 
         if (points.length > 0) {
             context.beginPath();
@@ -46,7 +45,7 @@ const RoofCanvas: React.FC = () => {
     };
 
     useEffect(() => {
-        drawOnMainCanvas();
+        requestAnimationFrame(draw);
     }, [points]);
 
     const handleMouseDown = (event: MouseEvent<HTMLCanvasElement>) => {
@@ -84,9 +83,13 @@ const RoofCanvas: React.FC = () => {
     };
 
     const resetImage = () => {
-        setPoints([])
-        setIsDrawing(false)
-    }
+        setPoints([]);
+        const canvas = canvasRef.current;
+        const context = canvas!.getContext('2d')!;
+        if (image) {
+            context.drawImage(image, 0, 0, canvas!.width, canvas!.height);
+        }
+    };
 
     return (
         <div>
@@ -100,12 +103,6 @@ const RoofCanvas: React.FC = () => {
                     onMouseUp={handleMouseUp}
                     style={{ border: '1px solid black' }}
                 />
-                <canvas
-                    ref={offScreenCanvasRef}
-                    width={800}
-                    height={600}
-                    style={{ display: 'none' }}
-                />
             </div>
             <div>
                 <div className='button-container'>
@@ -117,7 +114,6 @@ const RoofCanvas: React.FC = () => {
                 </p>
             </div>
         </div>
-
     );
 };
 
